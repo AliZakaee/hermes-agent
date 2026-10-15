@@ -618,6 +618,12 @@ async def _send_or_update_status_coro(adapter, chat_id, status_key, content, met
     return await adapter.send(chat_id, content, metadata=metadata)
 
 
+def _with_repeat_count(line: str, count: int) -> str:
+    """Keep a closing code fence on its own line when appending a dedup counter."""
+    separator = "\n" if str(line).rstrip().endswith("```") else " "
+    return f"{line}{separator}(×{count})"
+
+
 def _resolve_progress_thread_id(
     platform: Any,
     source_thread_id: Any,
@@ -21181,7 +21187,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     if isinstance(raw, tuple) and len(raw) == 3 and raw[0] == "__dedup__":
                         _, base_msg, count = raw
                         if progress_lines:
-                            progress_lines[-1] = f"{base_msg} (×{count + 1})"
+                            progress_lines[-1] = _with_repeat_count(base_msg, count + 1)
                         msg = progress_lines[-1] if progress_lines else base_msg
                     elif isinstance(raw, tuple) and len(raw) >= 1 and raw[0] == "__reset__":
                         # Content bubble just landed on the platform — close off
@@ -21303,7 +21309,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                             if isinstance(raw, tuple) and len(raw) == 3 and raw[0] == "__dedup__":
                                 _, base_msg, count = raw
                                 if progress_lines:
-                                    progress_lines[-1] = f"{base_msg} (×{count + 1})"
+                                    progress_lines[-1] = _with_repeat_count(base_msg, count + 1)
                                     await _roll_progress_overflow_if_needed()
                             elif isinstance(raw, tuple) and len(raw) >= 1 and raw[0] == "__reset__":
                                 # Content-bubble marker during drain: close off
